@@ -1,0 +1,38 @@
+- name: Install NFS server packages
+  apt:
+    name: nfs-kernel-server
+    state: present
+    update_cache: yes
+
+- name: Create mount directory
+  file:
+    path: /data/nfs_share
+    state: directory
+
+- name: Format unpartitioned disk as XFS (e.g., /dev/sdb)
+  filesystem:
+    fstype: xfs
+    dev: /dev/sdb
+  when: ansible_devices['sdb'] is defined
+
+- name: Mount XFS volume
+  mount:
+    path: /data/nfs_share
+    src: /dev/sdb
+    fstype: xfs
+    state: mounted
+
+- name: Configure /etc/exports
+  copy:
+    dest: /etc/exports
+    content: |
+      /data/nfs_share 10.215.19.0/24(rw,sync,no_subtree_check,no_root_squash)
+
+- name: Export NFS shares
+  command: exportfs -ra
+
+- name: Ensure NFS server is started
+  systemd:
+    name: nfs-server
+    state: started
+    enabled: true
